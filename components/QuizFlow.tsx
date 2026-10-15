@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CRITERIA, type ProjectScores } from "@/lib/criteria";
 import { PROJECTS } from "@/lib/projects";
-import { StarRating } from "./StarRating";
+import { BotRating } from "./BotRating";
+import { GrokBot } from "./GrokBot";
 
 type Phase = "quiz" | "submitting" | "done";
 
@@ -113,8 +114,9 @@ export function QuizFlow() {
         </div>
         <main
           key={animKey}
-          className="quiz-enter flex flex-1 flex-col justify-center px-6 py-16 sm:px-12 md:px-24"
+          className="quiz-enter flex flex-1 flex-col justify-center px-4 py-10 sm:px-12 md:px-24"
         >
+          <GrokBot id={6} className="mb-6 h-24 w-24 sm:h-32 sm:w-32" />
           <p className="mb-4 text-sm font-medium uppercase tracking-wide text-[#737373]">
             All done
           </p>
@@ -146,13 +148,14 @@ export function QuizFlow() {
 
       <main
         key={animKey}
-        className={`flex flex-1 flex-col justify-center px-6 py-12 sm:px-12 md:px-24 ${
+        className={`flex flex-1 flex-col overflow-y-auto px-4 py-6 sm:justify-center sm:px-12 sm:py-12 md:px-24 ${
           direction === "forward" ? "quiz-enter-forward" : "quiz-enter-back"
         }`}
       >
         {step === 0 && (
           <>
-            <p className="mb-4 text-sm font-medium text-[#737373]">
+            <GrokBot id={12} className="mb-5 h-20 w-20 sm:h-28 sm:w-28" />
+            <p className="mb-3 text-sm font-medium text-[#737373]">
               1 → {totalSteps}
             </p>
             <h1 className="max-w-3xl text-3xl font-light leading-tight text-[#191919] sm:text-4xl md:text-5xl">
@@ -174,18 +177,23 @@ export function QuizFlow() {
 
         {project && projectScores && (
           <>
-            <p className="mb-4 text-sm font-medium text-[#737373]">
-              {step + 1} → {totalSteps}
-            </p>
-            <h1 className="max-w-3xl text-3xl font-light leading-tight text-[#191919] sm:text-4xl md:text-5xl">
-              {project.name}
-            </h1>
+            <div className="mb-4 flex items-center gap-3">
+              <GrokBot id={step} className="h-14 w-14 shrink-0 sm:h-20 sm:w-20" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-[#737373]">
+                  {step + 1} → {totalSteps}
+                </p>
+                <h1 className="text-2xl font-light leading-tight text-[#191919] sm:text-4xl md:text-5xl">
+                  {project.name}
+                </h1>
+              </div>
+            </div>
             {project.description && (
-              <p className="mt-3 max-w-2xl text-lg text-[#737373]">{project.description}</p>
+              <p className="max-w-2xl text-base text-[#737373] sm:text-lg">{project.description}</p>
             )}
-            <div className="mt-10 max-w-3xl space-y-8">
+            <div className="mt-6 max-w-3xl space-y-6 sm:mt-10 sm:space-y-8">
               {CRITERIA.map((c) => (
-                <StarRating
+                <BotRating
                   key={c.key}
                   label={c.label}
                   hint={c.hint}
@@ -203,13 +211,13 @@ export function QuizFlow() {
           </p>
         )}
 
-        <div className="mt-12 flex flex-wrap items-center gap-4">
+        <div className="sticky bottom-0 z-10 -mx-4 mt-8 flex flex-wrap items-center gap-3 border-t border-[#ececec] bg-[#fafafa]/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:mt-12 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           {step > 0 && (
             <button
               type="button"
               onClick={goBack}
               disabled={phase === "submitting"}
-              className="rounded-md border border-[#e0e0e0] bg-white px-5 py-3 text-sm font-semibold text-[#191919] disabled:opacity-50"
+              className="min-h-12 rounded-md border border-[#e0e0e0] bg-white px-5 text-sm font-semibold text-[#191919] disabled:opacity-50"
             >
               Back
             </button>
@@ -218,7 +226,7 @@ export function QuizFlow() {
             type="button"
             onClick={() => void goForward()}
             disabled={!canAdvance || phase === "submitting"}
-            className="rounded-md bg-[#191919] px-8 py-3 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+            className="min-h-12 flex-1 rounded-md bg-[#191919] px-8 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
           >
             {phase === "submitting"
               ? "Submitting…"
@@ -226,13 +234,13 @@ export function QuizFlow() {
                 ? "Submit"
                 : "OK"}
           </button>
-          <span className="text-sm text-[#737373]">
+          <span className="hidden text-sm text-[#737373] sm:inline">
             press <kbd className="rounded border px-1.5 py-0.5 font-mono text-xs">Enter ↵</kbd>
           </span>
         </div>
       </main>
 
-      <footer className="px-6 pb-6 text-center text-xs text-[#b3b3b3] sm:text-left">
+      <footer className="px-4 pb-4 text-center text-xs text-[#b3b3b3] sm:px-6 sm:pb-6 sm:text-left">
         <Link href="/results" className="underline-offset-2 hover:underline">
           Results dashboard
         </Link>

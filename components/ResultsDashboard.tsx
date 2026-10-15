@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ResultsData } from "@/lib/results";
+import { GrokBot } from "./GrokBot";
 
 function fmt(n: number | null) {
   if (n === null) return "—";
@@ -39,6 +40,7 @@ export function ResultsDashboard() {
       <header className="border-b border-white/10 px-6 py-8 sm:px-10">
         <div className="mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-4">
           <div>
+            <GrokBot id={5} className="mb-4 h-16 w-16 rounded-full bg-white sm:h-20 sm:w-20" />
             <p className="text-sm font-medium uppercase tracking-widest text-[#a3a3a3]">
               Live board
             </p>
@@ -80,7 +82,12 @@ export function ResultsDashboard() {
                 className="rounded-xl border border-white/10 bg-white/[0.03] p-5 sm:p-6"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
+                  <div className="flex min-w-0 items-start gap-3">
+                    <GrokBot
+                      id={index + 1}
+                      className="h-12 w-12 shrink-0 rounded-full bg-white sm:h-14 sm:w-14"
+                    />
+                    <div className="min-w-0">
                     <p className="text-xs font-medium uppercase tracking-wide text-[#737373]">
                       #{index + 1}
                     </p>
@@ -88,6 +95,7 @@ export function ResultsDashboard() {
                     {p.description && (
                       <p className="mt-1 text-sm text-[#a3a3a3]">{p.description}</p>
                     )}
+                    </div>
                   </div>
                   <div className="text-right">
                     <p className="text-3xl font-bold tabular-nums">{fmt(p.overall)}</p>
