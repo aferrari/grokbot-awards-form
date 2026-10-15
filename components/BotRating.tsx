@@ -45,8 +45,8 @@ export function BotRating({ value, onChange, label, hint }: BotRatingProps) {
               key={n}
               type="button"
               onClick={() => onChange(n)}
-              className={`flex aspect-square flex-col items-center justify-center rounded-2xl p-0.5 transition active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#191919] ${
-                chosen ? "bg-[#191919]/8 ring-2 ring-[#191919]" : "bg-transparent"
+              className={`relative flex aspect-square items-center justify-center rounded-2xl transition active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#191919] ${
+                chosen ? "bg-[#191919]/10 ring-2 ring-[#191919]" : "bg-transparent"
               }`}
               aria-label={`${label}: score ${n}`}
               aria-pressed={chosen}
@@ -54,8 +54,15 @@ export function BotRating({ value, onChange, label, hint }: BotRatingProps) {
               <GrokBot
                 id={n}
                 awake={filled}
-                className={`h-[78%] w-[78%] ${chosen ? "scale-110" : ""}`}
+                className={`h-[72%] w-[72%] ${chosen ? "scale-110" : ""}`}
               />
+              <span
+                className={`absolute right-0.5 bottom-0.5 text-[10px] font-semibold leading-none ${
+                  chosen ? "text-[#191919]" : "text-[#a3a3a3]"
+                }`}
+              >
+                {n}
+              </span>
             </button>
           );
         })}

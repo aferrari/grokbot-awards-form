@@ -136,7 +136,35 @@ export function ResultsDashboard() {
             <h2 id="judges-heading" className="text-lg font-semibold">
               All scores by judge
             </h2>
-            <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
+            <ul className="mt-4 space-y-3 md:hidden">
+              {judges.map((row, i) => (
+                <li
+                  key={`${row.judgeName}-${row.projectId}-${i}`}
+                  className="rounded-xl border border-white/10 p-4"
+                >
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="font-medium">{row.judgeName}</p>
+                    <p className="text-lg font-semibold tabular-nums">{row.overall.toFixed(1)}</p>
+                  </div>
+                  <p className="text-sm text-[#a3a3a3]">{row.projectName}</p>
+                  <dl className="mt-3 grid grid-cols-3 gap-2 text-sm">
+                    <div>
+                      <dt className="text-[#737373]">Creativity</dt>
+                      <dd className="font-semibold tabular-nums">{row.creativity}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-[#737373]">Usefulness</dt>
+                      <dd className="font-semibold tabular-nums">{row.usefulness}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-[#737373]">Demo</dt>
+                      <dd className="font-semibold tabular-nums">{row.demo}</dd>
+                    </div>
+                  </dl>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-4 hidden overflow-x-auto rounded-xl border border-white/10 md:block">
               <table className="min-w-full text-left text-sm">
                 <thead className="bg-white/5 text-[#a3a3a3]">
                   <tr>
