@@ -1,5 +1,5 @@
 import { ensureSchema, getSql } from "@/lib/db";
-import { PROJECTS } from "@/lib/projects";
+import { listProjects } from "@/lib/quiz-store";
 
 export type ProjectAggregate = {
   projectId: string;
@@ -12,26 +12,15 @@ export type ProjectAggregate = {
   overall: number | null;
 };
 
-export type JudgeRow = {
-  judgeName: string;
-  createdAt: string;
-  projectId: string;
-  projectName: string;
-  creativity: number;
-  usefulness: number;
-  demo: number;
-  overall: number;
-};
-
 export type ResultsData = {
   aggregates: ProjectAggregate[];
-  judges: JudgeRow[];
   submissionCount: number;
 };
 
 export async function fetchResults(): Promise<ResultsData> {
   await ensureSchema();
   const sql = getSql();
+  const projects = await listProjects();
 
   const aggRows = (await sql`
     SELECT
@@ -65,7 +54,7 @@ export async function fetchResults(): Promise<ResultsData> {
     ]),
   );
 
-  const aggregates: ProjectAggregate[] = PROJECTS.map((p) => {
+  const aggregates: ProjectAggregate[] = projects.map((p) => {
     const a = aggMap.get(p.id);
     return {
       projectId: p.id,
@@ -79,48 +68,10 @@ export async function fetchResults(): Promise<ResultsData> {
     };
   }).sort((a, b) => (b.overall ?? -1) - (a.overall ?? -1));
 
-  const judgeRows = (await sql`
-    SELECT
-      s.judge_name,
-      s.created_at,
-      sc.project_id,
-      sc.creativity,
-      sc.usefulness,
-      sc.demo
-    FROM submissions s
-    JOIN scores sc ON sc.submission_id = s.id
-    ORDER BY s.created_at DESC, sc.project_id ASC
-  `) as {
-    judge_name: string;
-    created_at: string;
-    project_id: string;
-    creativity: number;
-    usefulness: number;
-    demo: number;
-  }[];
-
-  const nameById = Object.fromEntries(PROJECTS.map((p) => [p.id, p.name]));
-
-  const judges: JudgeRow[] = judgeRows.map((r) => {
-    const creativity = r.creativity;
-    const usefulness = r.usefulness;
-    const demo = r.demo;
-    return {
-      judgeName: r.judge_name,
-      createdAt: new Date(r.created_at).toISOString(),
-      projectId: r.project_id,
-      projectName: nameById[r.project_id] ?? r.project_id,
-      creativity,
-      usefulness,
-      demo,
-      overall: (creativity + usefulness + demo) / 3,
-    };
-  });
-
   const submissionCountRows = (await sql`SELECT COUNT(*)::int AS c FROM submissions`) as {
     c: number;
   }[];
   const submissionCount = submissionCountRows[0]?.c ?? 0;
 
-  return { aggregates, judges, submissionCount };
+  return { aggregates, submissionCount };
 }

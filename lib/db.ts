@@ -40,6 +40,26 @@ export async function ensureSchema() {
       await db`
         CREATE INDEX IF NOT EXISTS scores_project_id_idx ON scores (project_id)
       `;
+      await db`
+        CREATE TABLE IF NOT EXISTS quiz_projects (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          description TEXT NOT NULL DEFAULT '',
+          position INTEGER NOT NULL
+        )
+      `;
+      await db`ALTER TABLE submissions ADD COLUMN IF NOT EXISTS email TEXT`;
+      await db`
+        CREATE UNIQUE INDEX IF NOT EXISTS submissions_email_lower_unique
+        ON submissions (lower(email))
+        WHERE email IS NOT NULL
+      `;
+      await db`
+        CREATE TABLE IF NOT EXISTS allowed_voter_emails (
+          email TEXT PRIMARY KEY,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `;
     })();
   }
   await schemaReady;

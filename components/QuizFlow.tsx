@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CRITERIA, type ProjectScores } from "@/lib/criteria";
-import { PROJECTS } from "@/lib/projects";
-import { StarRating } from "./StarRating";
+import { isValidEmailFormat } from "@/lib/email-format";
+import type { Project } from "@/lib/projects";
+import { BotRating } from "./BotRating";
+import { GrokBot } from "./GrokBot";
 
 type Phase = "quiz" | "submitting" | "done";
 
@@ -17,36 +19,107 @@ function isComplete(scores: ProjectScores) {
 }
 
 export function QuizFlow() {
-  const totalSteps = 1 + PROJECTS.length;
+  const [projects, setProjects] = useState<Project[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const quizKeyRef = useRef<string | null>(null);
   const [step, setStep] = useState(0);
   const [phase, setPhase] = useState<Phase>("quiz");
   const [direction, setDirection] = useState<"forward" | "back">("forward");
-  const [judgeName, setJudgeName] = useState("");
-  const [byProject, setByProject] = useState<Record<string, ProjectScores>>(() =>
-    Object.fromEntries(PROJECTS.map((p) => [p.id, emptyScores()])),
-  );
+  const [voterEmail, setVoterEmail] = useState("");
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [byProject, setByProject] = useState<Record<string, ProjectScores>>({});
   const [error, setError] = useState<string | null>(null);
   const [animKey, setAnimKey] = useState(0);
 
+  const applyProjects = useCallback((next: Project[]) => {
+    const key = next.map((p) => `${p.id}\t${p.name}\t${p.description}`).join("\n");
+    if (quizKeyRef.current === key) return;
+    quizKeyRef.current = key;
+    setProjects(next);
+    setByProject(Object.fromEntries(next.map((p) => [p.id, emptyScores()])));
+    setStep(0);
+    setPhase("quiz");
+    setDirection("forward");
+    setVoterEmail("");
+    setCheckingEmail(false);
+    setError(null);
+    setAnimKey((k) => k + 1);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch("/api/quiz", { cache: "no-store" });
+        const data = (await res.json()) as { projects?: Project[]; error?: string };
+        if (!res.ok) {
+          throw new Error(data.error ?? "Could not load the quiz");
+        }
+        if (!cancelled) {
+          setLoadError(null);
+          applyProjects(data.projects ?? []);
+        }
+      } catch (e) {
+        if (!cancelled && quizKeyRef.current === null) {
+          setLoadError(e instanceof Error ? e.message : "Could not load the quiz");
+        }
+      }
+    };
+    void load();
+    const onFocus = () => {
+      void load();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [applyProjects]);
+
+  const list = projects ?? [];
+  const totalSteps = 1 + list.length;
   const progress = useMemo(() => ((step + 1) / totalSteps) * 100, [step, totalSteps]);
 
-  const onProject = step >= 1 && step <= PROJECTS.length;
-  const project = onProject ? PROJECTS[step - 1] : null;
+  const onProject = step >= 1 && step <= list.length;
+  const project = onProject ? list[step - 1] : null;
   const projectScores = project ? byProject[project.id] : null;
 
   const canAdvance = useMemo(() => {
     if (step === 0) {
-      return judgeName.trim().length >= 2;
+      return isValidEmailFormat(voterEmail);
     }
     if (project && projectScores) {
       return isComplete(projectScores);
     }
     return false;
-  }, [step, judgeName, project, projectScores]);
+  }, [step, voterEmail, project, projectScores]);
 
   const goForward = useCallback(async () => {
-    if (!canAdvance || phase !== "quiz") return;
+    if (!canAdvance || phase !== "quiz" || checkingEmail) return;
     setError(null);
+
+    if (step === 0) {
+      setCheckingEmail(true);
+      try {
+        const res = await fetch("/api/eligibility", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: voterEmail.trim() }),
+        });
+        const data = (await res.json()) as { error?: string };
+        if (!res.ok) {
+          throw new Error(data.error ?? "This email cannot vote");
+        }
+        setDirection("forward");
+        setStep(1);
+        setAnimKey((k) => k + 1);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "This email cannot vote");
+      } finally {
+        setCheckingEmail(false);
+      }
+      return;
+    }
 
     if (step < totalSteps - 1) {
       setDirection("forward");
@@ -61,7 +134,7 @@ export function QuizFlow() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          judgeName: judgeName.trim(),
+          email: voterEmail.trim(),
           scores: byProject,
         }),
       });
@@ -75,7 +148,7 @@ export function QuizFlow() {
       setPhase("quiz");
       setError(e instanceof Error ? e.message : "Something went wrong");
     }
-  }, [canAdvance, phase, step, totalSteps, judgeName, byProject]);
+  }, [canAdvance, phase, step, totalSteps, voterEmail, byProject, checkingEmail]);
 
   const goBack = useCallback(() => {
     if (step === 0 || phase !== "quiz") return;
@@ -105,6 +178,41 @@ export function QuizFlow() {
     }));
   };
 
+  if (loadError) {
+    return (
+      <div className="flex min-h-dvh flex-col justify-center bg-[#fafafa] px-4 py-10 sm:px-12 md:px-24">
+        <p className="text-sm font-medium uppercase tracking-wide text-[#737373]">Quiz</p>
+        <h1 className="mt-3 max-w-2xl text-3xl font-light text-[#191919] sm:text-4xl">
+          The quiz could not be loaded
+        </h1>
+        <p className="mt-4 max-w-xl text-lg text-[#737373]">{loadError}</p>
+      </div>
+    );
+  }
+
+  if (!projects) {
+    return (
+      <div className="flex min-h-dvh items-center bg-[#fafafa] px-4 text-lg text-[#737373] sm:px-12">
+        Loading the quiz…
+      </div>
+    );
+  }
+
+  if (projects.length === 0) {
+    return (
+      <div className="flex min-h-dvh flex-col justify-center bg-[#fafafa] px-4 py-10 sm:px-12 md:px-24">
+        <GrokBot id={12} className="mb-6 h-24 w-24 sm:h-32 sm:w-32" />
+        <p className="text-sm font-medium uppercase tracking-wide text-[#737373]">Quiz</p>
+        <h1 className="mt-3 max-w-2xl text-3xl font-light text-[#191919] sm:text-4xl">
+          No projects yet
+        </h1>
+        <p className="mt-4 max-w-xl text-lg text-[#737373]">
+          Send a project list to create the quiz. It can be any number of projects.
+        </p>
+      </div>
+    );
+  }
+
   if (phase === "done") {
     return (
       <div className="flex min-h-dvh flex-col bg-[#fafafa]">
@@ -113,16 +221,17 @@ export function QuizFlow() {
         </div>
         <main
           key={animKey}
-          className="quiz-enter flex flex-1 flex-col justify-center px-6 py-16 sm:px-12 md:px-24"
+          className="quiz-enter flex flex-1 flex-col justify-center px-4 py-10 sm:px-12 md:px-24"
         >
+          <GrokBot id={6} className="mb-6 h-24 w-24 sm:h-32 sm:w-32" />
           <p className="mb-4 text-sm font-medium uppercase tracking-wide text-[#737373]">
             All done
           </p>
           <h1 className="max-w-2xl text-3xl font-light leading-tight text-[#191919] sm:text-4xl md:text-5xl">
-            Thanks, {judgeName.trim()}!
+            Thanks — your vote is in!
           </h1>
           <p className="mt-6 max-w-xl text-lg text-[#737373]">
-            Your scores for all {PROJECTS.length} projects were saved.
+            Your scores for all {list.length} projects were saved. Each invited email can vote once.
           </p>
           <Link
             href="/results"
@@ -146,27 +255,29 @@ export function QuizFlow() {
 
       <main
         key={animKey}
-        className={`flex flex-1 flex-col justify-center px-6 py-12 sm:px-12 md:px-24 ${
+        className={`flex flex-1 flex-col overflow-y-auto px-4 py-6 sm:justify-center sm:px-12 sm:py-12 md:px-24 ${
           direction === "forward" ? "quiz-enter-forward" : "quiz-enter-back"
         }`}
       >
         {step === 0 && (
           <>
-            <p className="mb-4 text-sm font-medium text-[#737373]">
+            <GrokBot id={12} className="mb-5 h-20 w-20 sm:h-28 sm:w-28" />
+            <p className="mb-3 text-sm font-medium text-[#737373]">
               1 → {totalSteps}
             </p>
             <h1 className="max-w-3xl text-3xl font-light leading-tight text-[#191919] sm:text-4xl md:text-5xl">
-              What&apos;s your name?
+              What&apos;s your email?
             </h1>
             <p className="mt-4 max-w-xl text-lg text-[#737373]">
-              We&apos;ll show it on the public results board with your scores.
+              Use the address you were invited with. Each email can submit one evaluation.
             </p>
             <input
-              type="text"
+              type="email"
+              autoComplete="email"
               autoFocus
-              value={judgeName}
-              onChange={(e) => setJudgeName(e.target.value)}
-              placeholder="Type your answer here…"
+              value={voterEmail}
+              onChange={(e) => setVoterEmail(e.target.value)}
+              placeholder="you@company.com"
               className="mt-10 max-w-xl border-b-2 border-[#191919] bg-transparent py-3 text-2xl text-[#191919] outline-none placeholder:text-[#b3b3b3] sm:text-3xl"
             />
           </>
@@ -174,18 +285,23 @@ export function QuizFlow() {
 
         {project && projectScores && (
           <>
-            <p className="mb-4 text-sm font-medium text-[#737373]">
-              {step + 1} → {totalSteps}
-            </p>
-            <h1 className="max-w-3xl text-3xl font-light leading-tight text-[#191919] sm:text-4xl md:text-5xl">
-              {project.name}
-            </h1>
+            <div className="mb-4 flex items-center gap-3">
+              <GrokBot id={step} className="h-14 w-14 shrink-0 sm:h-20 sm:w-20" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-[#737373]">
+                  {step + 1} → {totalSteps}
+                </p>
+                <h1 className="text-2xl font-light leading-tight text-[#191919] sm:text-4xl md:text-5xl">
+                  {project.name}
+                </h1>
+              </div>
+            </div>
             {project.description && (
-              <p className="mt-3 max-w-2xl text-lg text-[#737373]">{project.description}</p>
+              <p className="max-w-2xl text-base text-[#737373] sm:text-lg">{project.description}</p>
             )}
-            <div className="mt-10 max-w-3xl space-y-8">
+            <div className="mt-6 max-w-3xl space-y-6 sm:mt-10 sm:space-y-8">
               {CRITERIA.map((c) => (
-                <StarRating
+                <BotRating
                   key={c.key}
                   label={c.label}
                   hint={c.hint}
@@ -203,13 +319,13 @@ export function QuizFlow() {
           </p>
         )}
 
-        <div className="mt-12 flex flex-wrap items-center gap-4">
+        <div className="sticky bottom-0 z-10 -mx-4 mt-8 flex flex-wrap items-center gap-3 border-t border-[#ececec] bg-[#fafafa]/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:mt-12 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           {step > 0 && (
             <button
               type="button"
               onClick={goBack}
               disabled={phase === "submitting"}
-              className="rounded-md border border-[#e0e0e0] bg-white px-5 py-3 text-sm font-semibold text-[#191919] disabled:opacity-50"
+              className="min-h-12 rounded-md border border-[#e0e0e0] bg-white px-5 text-sm font-semibold text-[#191919] disabled:opacity-50"
             >
               Back
             </button>
@@ -217,22 +333,24 @@ export function QuizFlow() {
           <button
             type="button"
             onClick={() => void goForward()}
-            disabled={!canAdvance || phase === "submitting"}
-            className="rounded-md bg-[#191919] px-8 py-3 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+            disabled={!canAdvance || phase === "submitting" || checkingEmail}
+            className="min-h-12 flex-1 rounded-md bg-[#191919] px-8 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
           >
-            {phase === "submitting"
-              ? "Submitting…"
-              : step === totalSteps - 1
-                ? "Submit"
-                : "OK"}
+            {checkingEmail
+              ? "Checking…"
+              : phase === "submitting"
+                ? "Submitting…"
+                : step === totalSteps - 1
+                  ? "Submit"
+                  : "OK"}
           </button>
-          <span className="text-sm text-[#737373]">
+          <span className="hidden text-sm text-[#737373] sm:inline">
             press <kbd className="rounded border px-1.5 py-0.5 font-mono text-xs">Enter ↵</kbd>
           </span>
         </div>
       </main>
 
-      <footer className="px-6 pb-6 text-center text-xs text-[#b3b3b3] sm:text-left">
+      <footer className="px-4 pb-4 text-center text-xs text-[#b3b3b3] sm:px-6 sm:pb-6 sm:text-left">
         <Link href="/results" className="underline-offset-2 hover:underline">
           Results dashboard
         </Link>

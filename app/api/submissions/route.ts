@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { CRITERIA, type ProjectScores } from "@/lib/criteria";
 import { ensureSchema, getSql } from "@/lib/db";
-import { PROJECTS, PROJECT_IDS } from "@/lib/projects";
+import { listProjects } from "@/lib/quiz-store";
+import { assertVoterCanSubmit } from "@/lib/voter-eligibility";
 
 function parseScore(value: unknown): number | null {
   if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 10) {
@@ -10,20 +11,48 @@ function parseScore(value: unknown): number | null {
   return value;
 }
 
-function validatePayload(body: unknown): { judgeName: string; rows: Array<{ projectId: string } & ProjectScores> } | string {
+function isUniqueViolation(e: unknown): boolean {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    "code" in e &&
+    (e as { code: string }).code === "23505"
+  );
+}
+
+async function validatePayload(
+  body: unknown,
+): Promise<{ email: string; rows: Array<{ projectId: string } & ProjectScores> } | string> {
   if (!body || typeof body !== "object") {
     return "Invalid JSON body";
   }
-  const { judgeName, scores } = body as { judgeName?: unknown; scores?: unknown };
-  if (typeof judgeName !== "string" || judgeName.trim().length < 2 || judgeName.trim().length > 120) {
-    return "Please enter a valid name (2–120 characters)";
+  const { email, scores } = body as { email?: unknown; scores?: unknown };
+
+  const voter = await assertVoterCanSubmit(email);
+  if (typeof voter === "string") {
+    return voter;
   }
+
   if (!scores || typeof scores !== "object") {
     return "Missing scores";
   }
 
+  const projects = await listProjects();
+  if (projects.length === 0) {
+    return "This quiz has no projects yet";
+  }
+
+  const submittedIds = Object.keys(scores as object);
+  const expectedIds = projects.map((project) => project.id);
+  const sameProjects =
+    submittedIds.length === expectedIds.length &&
+    expectedIds.every((id) => submittedIds.includes(id));
+  if (!sameProjects) {
+    return "This quiz was replaced. Refresh the page and start again.";
+  }
+
   const rows: Array<{ projectId: string } & ProjectScores> = [];
-  for (const project of PROJECTS) {
+  for (const project of projects) {
     const entry = (scores as Record<string, unknown>)[project.id];
     if (!entry || typeof entry !== "object") {
       return `Missing scores for ${project.name}`;
@@ -39,18 +68,13 @@ function validatePayload(body: unknown): { judgeName: string; rows: Array<{ proj
     rows.push({ projectId: project.id, ...parsed });
   }
 
-  const extra = Object.keys(scores as object).filter((id) => !PROJECT_IDS.has(id));
-  if (extra.length > 0) {
-    return "Unknown project in submission";
-  }
-
-  return { judgeName: judgeName.trim(), rows };
+  return { email: voter.email, rows };
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const validated = validatePayload(body);
+    const validated = await validatePayload(body);
     if (typeof validated === "string") {
       return NextResponse.json({ error: validated }, { status: 400 });
     }
@@ -58,14 +82,22 @@ export async function POST(request: Request) {
     await ensureSchema();
     const sql = getSql();
 
-    const inserted = (await sql`
-      INSERT INTO submissions (judge_name)
-      VALUES (${validated.judgeName})
-      RETURNING id
-    `) as { id: string }[];
-    const submissionId = inserted[0]?.id;
-    if (!submissionId) {
-      throw new Error("Insert failed");
+    let submissionId: string;
+    try {
+      const inserted = (await sql`
+        INSERT INTO submissions (judge_name, email)
+        VALUES (${validated.email}, ${validated.email})
+        RETURNING id
+      `) as { id: string }[];
+      submissionId = inserted[0]?.id ?? "";
+      if (!submissionId) {
+        throw new Error("Insert failed");
+      }
+    } catch (e) {
+      if (isUniqueViolation(e)) {
+        return NextResponse.json({ error: "This email has already voted" }, { status: 409 });
+      }
+      throw e;
     }
 
     for (const row of validated.rows) {

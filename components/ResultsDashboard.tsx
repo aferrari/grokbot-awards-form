@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ResultsData } from "@/lib/results";
+import { GrokBot } from "./GrokBot";
 
 function fmt(n: number | null) {
   if (n === null) return "—";
@@ -24,13 +25,12 @@ export function ResultsDashboard() {
         setData(json);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Could not load results");
-        setData({ aggregates: [], judges: [], submissionCount: 0 });
+        setData({ aggregates: [], submissionCount: 0 });
       }
     })();
   }, []);
 
   const aggregates = data?.aggregates ?? [];
-  const judges = data?.judges ?? [];
   const submissionCount = data?.submissionCount ?? 0;
   const maxOverall = Math.max(...aggregates.map((a) => a.overall ?? 0), 1);
 
@@ -39,6 +39,7 @@ export function ResultsDashboard() {
       <header className="border-b border-white/10 px-6 py-8 sm:px-10">
         <div className="mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-4">
           <div>
+            <GrokBot id={5} className="mb-4 h-16 w-16 rounded-full bg-white sm:h-20 sm:w-20" />
             <p className="text-sm font-medium uppercase tracking-widest text-[#a3a3a3]">
               Live board
             </p>
@@ -80,7 +81,12 @@ export function ResultsDashboard() {
                 className="rounded-xl border border-white/10 bg-white/[0.03] p-5 sm:p-6"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
+                  <div className="flex min-w-0 items-start gap-3">
+                    <GrokBot
+                      id={index + 1}
+                      className="h-12 w-12 shrink-0 rounded-full bg-white sm:h-14 sm:w-14"
+                    />
+                    <div className="min-w-0">
                     <p className="text-xs font-medium uppercase tracking-wide text-[#737373]">
                       #{index + 1}
                     </p>
@@ -88,6 +94,7 @@ export function ResultsDashboard() {
                     {p.description && (
                       <p className="mt-1 text-sm text-[#a3a3a3]">{p.description}</p>
                     )}
+                    </div>
                   </div>
                   <div className="text-right">
                     <p className="text-3xl font-bold tabular-nums">{fmt(p.overall)}</p>
@@ -122,45 +129,6 @@ export function ResultsDashboard() {
             ))}
           </div>
         </section>
-
-        {judges.length > 0 && (
-          <section className="mt-14" aria-labelledby="judges-heading">
-            <h2 id="judges-heading" className="text-lg font-semibold">
-              All scores by judge
-            </h2>
-            <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
-              <table className="min-w-full text-left text-sm">
-                <thead className="bg-white/5 text-[#a3a3a3]">
-                  <tr>
-                    <th className="px-4 py-3 font-medium">Judge</th>
-                    <th className="px-4 py-3 font-medium">Project</th>
-                    <th className="px-4 py-3 font-medium">Creativity</th>
-                    <th className="px-4 py-3 font-medium">Usefulness</th>
-                    <th className="px-4 py-3 font-medium">Demo</th>
-                    <th className="px-4 py-3 font-medium">Overall</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {judges.map((row, i) => (
-                    <tr
-                      key={`${row.judgeName}-${row.projectId}-${i}`}
-                      className="border-t border-white/5"
-                    >
-                      <td className="px-4 py-2.5 whitespace-nowrap">{row.judgeName}</td>
-                      <td className="px-4 py-2.5">{row.projectName}</td>
-                      <td className="px-4 py-2.5 tabular-nums">{row.creativity}</td>
-                      <td className="px-4 py-2.5 tabular-nums">{row.usefulness}</td>
-                      <td className="px-4 py-2.5 tabular-nums">{row.demo}</td>
-                      <td className="px-4 py-2.5 font-medium tabular-nums">
-                        {row.overall.toFixed(1)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        )}
       </main>
     </div>
   );
