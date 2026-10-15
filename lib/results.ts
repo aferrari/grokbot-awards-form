@@ -1,5 +1,5 @@
 import { ensureSchema, getSql } from "@/lib/db";
-import { PROJECTS } from "@/lib/projects";
+import { listProjects } from "@/lib/quiz-store";
 
 export type ProjectAggregate = {
   projectId: string;
@@ -20,6 +20,7 @@ export type ResultsData = {
 export async function fetchResults(): Promise<ResultsData> {
   await ensureSchema();
   const sql = getSql();
+  const projects = await listProjects();
 
   const aggRows = (await sql`
     SELECT
@@ -53,7 +54,7 @@ export async function fetchResults(): Promise<ResultsData> {
     ]),
   );
 
-  const aggregates: ProjectAggregate[] = PROJECTS.map((p) => {
+  const aggregates: ProjectAggregate[] = projects.map((p) => {
     const a = aggMap.get(p.id);
     return {
       projectId: p.id,

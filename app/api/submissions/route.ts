@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { CRITERIA, type ProjectScores } from "@/lib/criteria";
 import { ensureSchema, getSql } from "@/lib/db";
-import { PROJECTS, PROJECT_IDS } from "@/lib/projects";
+import { listProjects } from "@/lib/quiz-store";
 
 function parseScore(value: unknown): number | null {
   if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 10) {
@@ -10,7 +10,7 @@ function parseScore(value: unknown): number | null {
   return value;
 }
 
-function validatePayload(body: unknown): { judgeName: string; rows: Array<{ projectId: string } & ProjectScores> } | string {
+async function validatePayload(body: unknown): Promise<{ judgeName: string; rows: Array<{ projectId: string } & ProjectScores> } | string> {
   if (!body || typeof body !== "object") {
     return "Invalid JSON body";
   }
@@ -22,8 +22,22 @@ function validatePayload(body: unknown): { judgeName: string; rows: Array<{ proj
     return "Missing scores";
   }
 
+  const projects = await listProjects();
+  if (projects.length === 0) {
+    return "This quiz has no projects yet";
+  }
+
+  const submittedIds = Object.keys(scores as object);
+  const expectedIds = projects.map((project) => project.id);
+  const sameProjects =
+    submittedIds.length === expectedIds.length &&
+    expectedIds.every((id) => submittedIds.includes(id));
+  if (!sameProjects) {
+    return "This quiz was replaced. Refresh the page and start again.";
+  }
+
   const rows: Array<{ projectId: string } & ProjectScores> = [];
-  for (const project of PROJECTS) {
+  for (const project of projects) {
     const entry = (scores as Record<string, unknown>)[project.id];
     if (!entry || typeof entry !== "object") {
       return `Missing scores for ${project.name}`;
@@ -39,18 +53,13 @@ function validatePayload(body: unknown): { judgeName: string; rows: Array<{ proj
     rows.push({ projectId: project.id, ...parsed });
   }
 
-  const extra = Object.keys(scores as object).filter((id) => !PROJECT_IDS.has(id));
-  if (extra.length > 0) {
-    return "Unknown project in submission";
-  }
-
   return { judgeName: judgeName.trim(), rows };
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const validated = validatePayload(body);
+    const validated = await validatePayload(body);
     if (typeof validated === "string") {
       return NextResponse.json({ error: validated }, { status: 400 });
     }

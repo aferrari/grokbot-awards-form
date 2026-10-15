@@ -40,6 +40,14 @@ export async function ensureSchema() {
       await db`
         CREATE INDEX IF NOT EXISTS scores_project_id_idx ON scores (project_id)
       `;
+      await db`
+        CREATE TABLE IF NOT EXISTS quiz_projects (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          description TEXT NOT NULL DEFAULT '',
+          position INTEGER NOT NULL
+        )
+      `;
     })();
   }
   await schemaReady;

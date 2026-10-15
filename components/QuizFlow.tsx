@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CRITERIA, type ProjectScores } from "@/lib/criteria";
-import { PROJECTS } from "@/lib/projects";
+import type { Project } from "@/lib/projects";
 import { BotRating } from "./BotRating";
 import { GrokBot } from "./GrokBot";
 
@@ -18,21 +18,67 @@ function isComplete(scores: ProjectScores) {
 }
 
 export function QuizFlow() {
-  const totalSteps = 1 + PROJECTS.length;
+  const [projects, setProjects] = useState<Project[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const quizKeyRef = useRef<string | null>(null);
   const [step, setStep] = useState(0);
   const [phase, setPhase] = useState<Phase>("quiz");
   const [direction, setDirection] = useState<"forward" | "back">("forward");
   const [judgeName, setJudgeName] = useState("");
-  const [byProject, setByProject] = useState<Record<string, ProjectScores>>(() =>
-    Object.fromEntries(PROJECTS.map((p) => [p.id, emptyScores()])),
-  );
+  const [byProject, setByProject] = useState<Record<string, ProjectScores>>({});
   const [error, setError] = useState<string | null>(null);
   const [animKey, setAnimKey] = useState(0);
 
+  const applyProjects = useCallback((next: Project[]) => {
+    const key = next.map((p) => `${p.id}\t${p.name}\t${p.description}`).join("\n");
+    if (quizKeyRef.current === key) return;
+    quizKeyRef.current = key;
+    setProjects(next);
+    setByProject(Object.fromEntries(next.map((p) => [p.id, emptyScores()])));
+    setStep(0);
+    setPhase("quiz");
+    setDirection("forward");
+    setJudgeName("");
+    setError(null);
+    setAnimKey((k) => k + 1);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch("/api/quiz", { cache: "no-store" });
+        const data = (await res.json()) as { projects?: Project[]; error?: string };
+        if (!res.ok) {
+          throw new Error(data.error ?? "Could not load the quiz");
+        }
+        if (!cancelled) {
+          setLoadError(null);
+          applyProjects(data.projects ?? []);
+        }
+      } catch (e) {
+        if (!cancelled && quizKeyRef.current === null) {
+          setLoadError(e instanceof Error ? e.message : "Could not load the quiz");
+        }
+      }
+    };
+    void load();
+    const onFocus = () => {
+      void load();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [applyProjects]);
+
+  const list = projects ?? [];
+  const totalSteps = 1 + list.length;
   const progress = useMemo(() => ((step + 1) / totalSteps) * 100, [step, totalSteps]);
 
-  const onProject = step >= 1 && step <= PROJECTS.length;
-  const project = onProject ? PROJECTS[step - 1] : null;
+  const onProject = step >= 1 && step <= list.length;
+  const project = onProject ? list[step - 1] : null;
   const projectScores = project ? byProject[project.id] : null;
 
   const canAdvance = useMemo(() => {
@@ -106,6 +152,47 @@ export function QuizFlow() {
     }));
   };
 
+  if (loadError) {
+    return (
+      <div className="flex min-h-dvh flex-col justify-center bg-[#fafafa] px-4 py-10 sm:px-12 md:px-24">
+        <p className="text-sm font-medium uppercase tracking-wide text-[#737373]">Quiz</p>
+        <h1 className="mt-3 max-w-2xl text-3xl font-light text-[#191919] sm:text-4xl">
+          The quiz could not be loaded
+        </h1>
+        <p className="mt-4 max-w-xl text-lg text-[#737373]">{loadError}</p>
+      </div>
+    );
+  }
+
+  if (!projects) {
+    return (
+      <div className="flex min-h-dvh items-center bg-[#fafafa] px-4 text-lg text-[#737373] sm:px-12">
+        Loading the quiz…
+      </div>
+    );
+  }
+
+  if (projects.length === 0) {
+    return (
+      <div className="flex min-h-dvh flex-col justify-center bg-[#fafafa] px-4 py-10 sm:px-12 md:px-24">
+        <GrokBot id={12} className="mb-6 h-24 w-24 sm:h-32 sm:w-32" />
+        <p className="text-sm font-medium uppercase tracking-wide text-[#737373]">Quiz</p>
+        <h1 className="mt-3 max-w-2xl text-3xl font-light text-[#191919] sm:text-4xl">
+          No projects yet
+        </h1>
+        <p className="mt-4 max-w-xl text-lg text-[#737373]">
+          Send a project list to create the quiz. It can be any number of projects.
+        </p>
+        <Link
+          href="/setup"
+          className="mt-10 inline-flex w-fit items-center rounded-md bg-[#191919] px-6 py-3 text-sm font-semibold text-white"
+        >
+          Create the quiz
+        </Link>
+      </div>
+    );
+  }
+
   if (phase === "done") {
     return (
       <div className="flex min-h-dvh flex-col bg-[#fafafa]">
@@ -124,7 +211,7 @@ export function QuizFlow() {
             Thanks, {judgeName.trim()}!
           </h1>
           <p className="mt-6 max-w-xl text-lg text-[#737373]">
-            Your scores for all {PROJECTS.length} projects were saved.
+            Your scores for all {list.length} projects were saved.
           </p>
           <Link
             href="/results"
