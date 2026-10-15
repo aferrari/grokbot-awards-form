@@ -10,7 +10,7 @@ Typeform-style quiz for rating a list of projects on **Creativity**, **Usefulnes
 
 ## Create the quiz
 
-Set `QUIZ_ADMIN_TOKEN` on the server (Vercel env). Then open `/setup`, paste one project per line, and submit. That replaces the current quiz and deletes every saved vote.
+Open `/setup`, paste invited voter emails (one per line) and your project list, then submit. Only listed emails can vote once. Replacing the quiz deletes every saved vote. You can save the voter list alone without replacing the quiz.
 
 ```
 Inbox Triage | Sorts support mail into a daily brief
@@ -18,7 +18,7 @@ Standup Bot
 Research Desk | Pulls sources before a meeting
 ```
 
-The same list can be sent to `POST /api/quiz` with `Authorization: Bearer $QUIZ_ADMIN_TOKEN`. The body can be that plain text, a JSON array of names, or:
+The same list can be sent to `POST /api/quiz`. The body can be that plain text, a JSON array of names, or:
 
 ```json
 { "projects": [{ "name": "Standup Bot", "description": "Optional" }] }

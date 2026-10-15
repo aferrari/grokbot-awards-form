@@ -1,12 +1,13 @@
-import { isAllowedEmail, parseEmail } from "@/lib/allowed-emails";
+import { parseEmail } from "@/lib/allowed-emails";
 import { ensureSchema, getSql } from "@/lib/db";
+import { isAllowedVoterEmail } from "@/lib/voters";
 
 export async function assertVoterCanSubmit(rawEmail: unknown): Promise<{ email: string } | string> {
   const email = parseEmail(rawEmail);
   if (!email) {
     return "Please enter a valid email address";
   }
-  if (!isAllowedEmail(email)) {
+  if (!(await isAllowedVoterEmail(email))) {
     return "This email is not on the invitation list";
   }
 

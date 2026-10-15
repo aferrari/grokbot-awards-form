@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { adminAuthError, tokenFromRequest } from "@/lib/admin";
 import { parseProjectList } from "@/lib/projects";
 import { listProjects, replaceQuiz } from "@/lib/quiz-store";
+import { listAllowedVoterEmails, parseAllowedEmailList, replaceAllowedVoterEmails } from "@/lib/voters";
 
 export async function GET() {
   try {
-    const projects = await listProjects();
-    return NextResponse.json({ projects });
+    const [projects, allowedEmails] = await Promise.all([listProjects(), listAllowedVoterEmails()]);
+    return NextResponse.json({ projects, allowedEmails });
   } catch (e) {
     return errorResponse(e, "Could not load the quiz");
   }
@@ -25,19 +25,30 @@ export async function POST(request: Request) {
       }
     }
 
-    const authError = adminAuthError(tokenFromRequest(request, body));
-    if (authError) {
-      const status = authError.includes("not configured") ? 503 : 401;
-      return NextResponse.json({ error: authError }, { status });
-    }
-
     const projects = parseProjectList(body);
     if (typeof projects === "string") {
       return NextResponse.json({ error: projects }, { status: 400 });
     }
 
+    let allowedEmails: string[] | undefined;
+    if (body && typeof body === "object" && "allowedEmails" in body) {
+      const parsed = parseAllowedEmailList(body);
+      if (typeof parsed === "string") {
+        return NextResponse.json({ error: parsed }, { status: 400 });
+      }
+      allowedEmails = parsed;
+    }
+
     const clearedVotes = await replaceQuiz(projects);
-    return NextResponse.json({ ok: true, clearedVotes, projects });
+    if (allowedEmails !== undefined) {
+      await replaceAllowedVoterEmails(allowedEmails);
+    }
+    return NextResponse.json({
+      ok: true,
+      clearedVotes,
+      projects,
+      allowedEmails: allowedEmails ?? (await listAllowedVoterEmails()),
+    });
   } catch (e) {
     return errorResponse(e, "Could not create the quiz");
   }

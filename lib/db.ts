@@ -54,6 +54,12 @@ export async function ensureSchema() {
         ON submissions (lower(email))
         WHERE email IS NOT NULL
       `;
+      await db`
+        CREATE TABLE IF NOT EXISTS allowed_voter_emails (
+          email TEXT PRIMARY KEY,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `;
     })();
   }
   await schemaReady;
