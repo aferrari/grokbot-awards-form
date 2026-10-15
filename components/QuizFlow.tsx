@@ -209,12 +209,6 @@ export function QuizFlow() {
         <p className="mt-4 max-w-xl text-lg text-[#737373]">
           Send a project list to create the quiz. It can be any number of projects.
         </p>
-        <Link
-          href="/setup"
-          className="mt-10 inline-flex w-fit items-center rounded-md bg-[#191919] px-6 py-3 text-sm font-semibold text-white"
-        >
-          Create the quiz
-        </Link>
       </div>
     );
   }
