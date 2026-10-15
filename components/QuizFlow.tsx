@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CRITERIA, type ProjectScores } from "@/lib/criteria";
+import { isValidEmailFormat } from "@/lib/email-format";
 import type { Project } from "@/lib/projects";
 import { BotRating } from "./BotRating";
 import { GrokBot } from "./GrokBot";
@@ -24,7 +25,8 @@ export function QuizFlow() {
   const [step, setStep] = useState(0);
   const [phase, setPhase] = useState<Phase>("quiz");
   const [direction, setDirection] = useState<"forward" | "back">("forward");
-  const [judgeName, setJudgeName] = useState("");
+  const [voterEmail, setVoterEmail] = useState("");
+  const [checkingEmail, setCheckingEmail] = useState(false);
   const [byProject, setByProject] = useState<Record<string, ProjectScores>>({});
   const [error, setError] = useState<string | null>(null);
   const [animKey, setAnimKey] = useState(0);
@@ -38,7 +40,8 @@ export function QuizFlow() {
     setStep(0);
     setPhase("quiz");
     setDirection("forward");
-    setJudgeName("");
+    setVoterEmail("");
+    setCheckingEmail(false);
     setError(null);
     setAnimKey((k) => k + 1);
   }, []);
@@ -83,17 +86,40 @@ export function QuizFlow() {
 
   const canAdvance = useMemo(() => {
     if (step === 0) {
-      return judgeName.trim().length >= 2;
+      return isValidEmailFormat(voterEmail);
     }
     if (project && projectScores) {
       return isComplete(projectScores);
     }
     return false;
-  }, [step, judgeName, project, projectScores]);
+  }, [step, voterEmail, project, projectScores]);
 
   const goForward = useCallback(async () => {
-    if (!canAdvance || phase !== "quiz") return;
+    if (!canAdvance || phase !== "quiz" || checkingEmail) return;
     setError(null);
+
+    if (step === 0) {
+      setCheckingEmail(true);
+      try {
+        const res = await fetch("/api/eligibility", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: voterEmail.trim() }),
+        });
+        const data = (await res.json()) as { error?: string };
+        if (!res.ok) {
+          throw new Error(data.error ?? "This email cannot vote");
+        }
+        setDirection("forward");
+        setStep(1);
+        setAnimKey((k) => k + 1);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "This email cannot vote");
+      } finally {
+        setCheckingEmail(false);
+      }
+      return;
+    }
 
     if (step < totalSteps - 1) {
       setDirection("forward");
@@ -108,7 +134,7 @@ export function QuizFlow() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          judgeName: judgeName.trim(),
+          email: voterEmail.trim(),
           scores: byProject,
         }),
       });
@@ -122,7 +148,7 @@ export function QuizFlow() {
       setPhase("quiz");
       setError(e instanceof Error ? e.message : "Something went wrong");
     }
-  }, [canAdvance, phase, step, totalSteps, judgeName, byProject]);
+  }, [canAdvance, phase, step, totalSteps, voterEmail, byProject, checkingEmail]);
 
   const goBack = useCallback(() => {
     if (step === 0 || phase !== "quiz") return;
@@ -208,10 +234,10 @@ export function QuizFlow() {
             All done
           </p>
           <h1 className="max-w-2xl text-3xl font-light leading-tight text-[#191919] sm:text-4xl md:text-5xl">
-            Thanks, {judgeName.trim()}!
+            Thanks — your vote is in!
           </h1>
           <p className="mt-6 max-w-xl text-lg text-[#737373]">
-            Your scores for all {list.length} projects were saved.
+            Your scores for all {list.length} projects were saved. Each invited email can vote once.
           </p>
           <Link
             href="/results"
@@ -246,17 +272,18 @@ export function QuizFlow() {
               1 → {totalSteps}
             </p>
             <h1 className="max-w-3xl text-3xl font-light leading-tight text-[#191919] sm:text-4xl md:text-5xl">
-              What&apos;s your name?
+              What&apos;s your email?
             </h1>
             <p className="mt-4 max-w-xl text-lg text-[#737373]">
-              We&apos;ll show it on the public results board with your scores.
+              Use the address you were invited with. Each email can submit one evaluation.
             </p>
             <input
-              type="text"
+              type="email"
+              autoComplete="email"
               autoFocus
-              value={judgeName}
-              onChange={(e) => setJudgeName(e.target.value)}
-              placeholder="Type your answer here…"
+              value={voterEmail}
+              onChange={(e) => setVoterEmail(e.target.value)}
+              placeholder="you@company.com"
               className="mt-10 max-w-xl border-b-2 border-[#191919] bg-transparent py-3 text-2xl text-[#191919] outline-none placeholder:text-[#b3b3b3] sm:text-3xl"
             />
           </>
@@ -312,14 +339,16 @@ export function QuizFlow() {
           <button
             type="button"
             onClick={() => void goForward()}
-            disabled={!canAdvance || phase === "submitting"}
+            disabled={!canAdvance || phase === "submitting" || checkingEmail}
             className="min-h-12 flex-1 rounded-md bg-[#191919] px-8 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
           >
-            {phase === "submitting"
-              ? "Submitting…"
-              : step === totalSteps - 1
-                ? "Submit"
-                : "OK"}
+            {checkingEmail
+              ? "Checking…"
+              : phase === "submitting"
+                ? "Submitting…"
+                : step === totalSteps - 1
+                  ? "Submit"
+                  : "OK"}
           </button>
           <span className="hidden text-sm text-[#737373] sm:inline">
             press <kbd className="rounded border px-1.5 py-0.5 font-mono text-xs">Enter ↵</kbd>

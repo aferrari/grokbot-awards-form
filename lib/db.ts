@@ -48,6 +48,12 @@ export async function ensureSchema() {
           position INTEGER NOT NULL
         )
       `;
+      await db`ALTER TABLE submissions ADD COLUMN IF NOT EXISTS email TEXT`;
+      await db`
+        CREATE UNIQUE INDEX IF NOT EXISTS submissions_email_lower_unique
+        ON submissions (lower(email))
+        WHERE email IS NOT NULL
+      `;
     })();
   }
   await schemaReady;
