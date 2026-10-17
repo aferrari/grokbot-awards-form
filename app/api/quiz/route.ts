@@ -1,18 +1,37 @@
 import { NextResponse } from "next/server";
+import { adminDeniedResponse, isAdminRequest } from "@/lib/admin-auth";
+import { databaseErrorResponse } from "@/lib/http-error";
 import { parseProjectList } from "@/lib/projects";
 import { listProjects, replaceQuiz } from "@/lib/quiz-store";
 import { listAllowedVoterEmails, parseAllowedEmailList, replaceAllowedVoterEmails } from "@/lib/voters";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const authorized = isAdminRequest(request);
+  const sentAuth = Boolean(request.headers.get("authorization"));
+  if (sentAuth && !authorized) {
+    return adminDeniedResponse();
+  }
+
   try {
-    const [projects, allowedEmails] = await Promise.all([listProjects(), listAllowedVoterEmails()]);
-    return NextResponse.json({ projects, allowedEmails });
+    const projects = await listProjects();
+    if (!authorized) {
+      return NextResponse.json({ projects }, { headers: { "Cache-Control": "no-store" } });
+    }
+    const allowedEmails = await listAllowedVoterEmails();
+    return NextResponse.json(
+      { projects, allowedEmails },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   } catch (e) {
     return errorResponse(e, "Could not load the quiz");
   }
 }
 
 export async function POST(request: Request) {
+  if (!isAdminRequest(request)) {
+    return adminDeniedResponse();
+  }
+
   try {
     const raw = await request.text();
     let body: unknown = raw;
@@ -43,19 +62,20 @@ export async function POST(request: Request) {
     if (allowedEmails !== undefined) {
       await replaceAllowedVoterEmails(allowedEmails);
     }
-    return NextResponse.json({
-      ok: true,
-      clearedVotes,
-      projects,
-      allowedEmails: allowedEmails ?? (await listAllowedVoterEmails()),
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        clearedVotes,
+        projects,
+        allowedEmails: allowedEmails ?? (await listAllowedVoterEmails()),
+      },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   } catch (e) {
     return errorResponse(e, "Could not create the quiz");
   }
 }
 
 function errorResponse(e: unknown, fallback: string) {
-  const message = e instanceof Error ? e.message : fallback;
-  const status = message.includes("DATABASE_URL") ? 503 : 500;
-  return NextResponse.json({ error: message }, { status });
+  return databaseErrorResponse(e, fallback);
 }

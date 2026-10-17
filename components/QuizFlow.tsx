@@ -186,6 +186,17 @@ export function QuizFlow() {
           The quiz could not be loaded
         </h1>
         <p className="mt-4 max-w-xl text-lg text-[#737373]">{loadError}</p>
+        <ol className="mt-6 max-w-xl list-decimal space-y-2 pl-5 text-[#191919]">
+          <li>Copy <code className="font-mono text-sm">.env.example</code> to <code className="font-mono text-sm">.env.local</code>.</li>
+          <li>Set <code className="font-mono text-sm">DATABASE_URL</code> and <code className="font-mono text-sm">ADMIN_SECRET</code>, then restart the server.</li>
+          <li>
+            Open{" "}
+            <Link href="/setup" className="underline underline-offset-2">
+              Setup
+            </Link>{" "}
+            and create the quiz.
+          </li>
+        </ol>
       </div>
     );
   }
@@ -207,7 +218,21 @@ export function QuizFlow() {
           No projects yet
         </h1>
         <p className="mt-4 max-w-xl text-lg text-[#737373]">
-          Send a project list to create the quiz. It can be any number of projects.
+          An organizer creates the quiz before anyone can vote.
+        </p>
+        <ol className="mt-6 max-w-xl list-decimal space-y-2 pl-5 text-[#191919]">
+          <li>Open Setup and enter the admin secret.</li>
+          <li>Paste invited emails, one address per line.</li>
+          <li>Paste projects, one per line, then create the quiz.</li>
+        </ol>
+        <Link
+          href="/setup"
+          className="mt-8 inline-flex w-fit rounded-md bg-[#191919] px-6 py-3 text-sm font-semibold text-white"
+        >
+          Open setup
+        </Link>
+        <p className="mt-6 max-w-xl text-[#737373]">
+          Voters return here and enter an invited email. Rankings are on the results board.
         </p>
       </div>
     );

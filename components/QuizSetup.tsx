@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { Project } from "@/lib/projects";
 import { GrokBot } from "./GrokBot";
 
@@ -37,24 +37,59 @@ export function QuizSetup() {
   const [pending, setPending] = useState(false);
   const [savingVoters, setSavingVoters] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [adminSecret, setAdminSecret] = useState("");
+  const adminSecretRef = useRef(adminSecret);
+  adminSecretRef.current = adminSecret;
 
   useEffect(() => {
     void (async () => {
       try {
         const res = await fetch("/api/quiz", { cache: "no-store" });
-        const data = (await res.json()) as { projects?: Project[]; allowedEmails?: string[] };
+        const data = (await res.json()) as { projects?: Project[] };
         if (res.ok) {
           setCurrent(data.projects ?? []);
-          const emails = data.allowedEmails ?? [];
-          setCurrentEmails(emails);
-          setEmailsText(emails.join("\n"));
         }
       } catch {
         setCurrent([]);
-        setCurrentEmails([]);
       }
     })();
   }, []);
+
+  async function loadInvitedVoters(secret: string) {
+    if (!secret) return;
+    try {
+      const res = await fetch("/api/quiz", {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${secret}` },
+      });
+      const data = (await res.json()) as {
+        projects?: Project[];
+        allowedEmails?: string[];
+        error?: string;
+      };
+      if (adminSecretRef.current !== secret) return;
+      if (!res.ok) {
+        setCurrentEmails(null);
+        setError(data.error ?? "Admin access required");
+        return;
+      }
+      setError(null);
+      setCurrent(data.projects ?? []);
+      const emails = data.allowedEmails ?? [];
+      setCurrentEmails(emails);
+      setEmailsText(emails.join("\n"));
+    } catch {
+      if (adminSecretRef.current !== secret) return;
+      setError("Could not load the voter list");
+    }
+  }
+
+  function adminHeaders(json = false): HeadersInit {
+    const headers: Record<string, string> = {};
+    if (json) headers["Content-Type"] = "application/json";
+    if (adminSecret) headers.Authorization = `Bearer ${adminSecret}`;
+    return headers;
+  }
 
   const lineCount = countProjectLines(text);
   const emailLineCount = countEmailLines(emailsText);
@@ -64,6 +99,10 @@ export function QuizSetup() {
     setError(null);
     setCreated(null);
     setSavedEmailCount(null);
+    if (!adminSecret) {
+      setError("Enter the admin secret from ADMIN_SECRET.");
+      return;
+    }
     if (lineCount === 0) {
       setError("Add at least one project");
       return;
@@ -74,11 +113,15 @@ export function QuizSetup() {
   async function saveVoterList() {
     setError(null);
     setSavedEmailCount(null);
+    if (!adminSecret) {
+      setError("Enter the admin secret from ADMIN_SECRET.");
+      return;
+    }
     setSavingVoters(true);
     try {
       const res = await fetch("/api/voters", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: adminHeaders(true),
         body: JSON.stringify({ allowedEmails: emailsText }),
       });
       const data = (await res.json()) as {
@@ -102,11 +145,16 @@ export function QuizSetup() {
 
   async function createQuiz() {
     setError(null);
+    if (!adminSecret) {
+      setError("Enter the admin secret from ADMIN_SECRET.");
+      setConfirming(false);
+      return;
+    }
     setPending(true);
     try {
       const res = await fetch("/api/quiz", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: adminHeaders(true),
         body: JSON.stringify({ projects: text, allowedEmails: emailsText }),
       });
       const data = (await res.json()) as {
@@ -141,12 +189,35 @@ export function QuizSetup() {
         <GrokBot id={3} className="mb-6 h-20 w-20 sm:h-24 sm:w-24" />
         <p className="text-sm font-medium uppercase tracking-wide text-[#737373]">Setup</p>
         <h1 className="mt-2 text-3xl font-light sm:text-5xl">Create the quiz</h1>
-        <p className="mt-4 max-w-2xl text-lg text-[#737373]">
-          Paste projects and invited voter emails below. Only listed emails can vote, once each.
-          Replacing the quiz deletes every saved vote.
+        <ol className="mt-6 max-w-2xl list-decimal space-y-2 pl-5 text-lg text-[#191919]">
+          <li>Enter the admin secret. It is the <span className="font-mono text-base">ADMIN_SECRET</span> from the server, not a voter email. Leave the field to load the current list.</li>
+          <li>Paste invited emails, one address per line. You can save that list on its own.</li>
+          <li>Paste projects, one per line. Add an optional description after a pipe.</li>
+          <li>Create the quiz, then share the quiz link. Rankings stay on the results board.</li>
+        </ol>
+        <p className="mt-4 max-w-2xl text-[#737373]">
+          Only listed emails can vote, once each. Replacing the quiz deletes every saved vote.
         </p>
 
         <form onSubmit={(e) => void onSubmit(e)} className="mt-10 space-y-8">
+          <label className="block">
+            <span className="text-sm font-medium text-[#191919]">Admin secret</span>
+            <span className="mt-1 block text-sm text-[#737373]">
+              Same value as ADMIN_SECRET. It stays in this page until you leave and is not saved in the browser.
+            </span>
+            <input
+              type="password"
+              autoComplete="off"
+              value={adminSecret}
+              onChange={(e) => setAdminSecret(e.target.value)}
+              onBlur={(e) => {
+                const secret = e.target.value;
+                if (secret) void loadInvitedVoters(secret);
+              }}
+              className="mt-2 w-full rounded-lg border border-[#e0e0e0] bg-white px-4 py-3 text-sm text-[#191919] outline-none placeholder:text-[#b3b3b3] focus:border-[#191919]"
+            />
+          </label>
+
           <label className="block">
             <span className="text-sm font-medium text-[#191919]">Invited voters</span>
             <span className="mt-1 block text-sm text-[#737373]">One email address per line.</span>

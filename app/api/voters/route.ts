@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
+import { adminDeniedResponse, isAdminRequest } from "@/lib/admin-auth";
+import { databaseErrorResponse } from "@/lib/http-error";
 import { parseAllowedEmailList, replaceAllowedVoterEmails } from "@/lib/voters";
 
 export async function POST(request: Request) {
+  if (!isAdminRequest(request)) {
+    return adminDeniedResponse();
+  }
+
   try {
     const raw = await request.text();
     let body: unknown = raw;
@@ -20,14 +26,15 @@ export async function POST(request: Request) {
     }
 
     await replaceAllowedVoterEmails(emails);
-    return NextResponse.json({ ok: true, count: emails.length, allowedEmails: emails });
+    return NextResponse.json(
+      { ok: true, count: emails.length, allowedEmails: emails },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   } catch (e) {
     return errorResponse(e, "Could not save the voter list");
   }
 }
 
 function errorResponse(e: unknown, fallback: string) {
-  const message = e instanceof Error ? e.message : fallback;
-  const status = message.includes("DATABASE_URL") ? 503 : 500;
-  return NextResponse.json({ error: message }, { status });
+  return databaseErrorResponse(e, fallback);
 }
