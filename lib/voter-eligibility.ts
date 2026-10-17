@@ -8,7 +8,7 @@ export async function assertVoterCanSubmit(rawEmail: unknown): Promise<{ email: 
     return "Please enter a valid email address";
   }
   if (!(await isAllowedVoterEmail(email))) {
-    return "This email is not on the invitation list";
+    return "This email is not on the allowed list";
   }
 
   await ensureSchema();

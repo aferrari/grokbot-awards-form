@@ -52,7 +52,7 @@ export function ResultsDashboard() {
                 : !data
                   ? "Loading results…"
                   : submissionCount === 0
-                    ? "No evaluations yet. Share the quiz link so invited voters can score the projects."
+                    ? "No evaluations yet. Share the quiz link so allowed voters can score the projects."
                     : `${submissionCount} judge${submissionCount === 1 ? "" : "s"} submitted`}
             </p>
           </div>
