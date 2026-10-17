@@ -2,7 +2,7 @@
 
 ## Reporting
 
-Report security issues privately to the repository owners, [@aferrari](https://x.com/aferrari) and [@christianmock](https://x.com/christianmock). Do not open a public issue for a vulnerability.
+Report security issues privately to the repository owners, [@aferrari](https://x.com/aferrari) and [@cristianmock](https://x.com/cristianmock). Do not open a public issue for a vulnerability.
 
 ## Secrets
 

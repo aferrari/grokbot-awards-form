@@ -2,7 +2,7 @@
 
 Judges score each project on **Creativity**, **Usefulness**, and **Demo**. The results page ranks the projects by the average of those three scores.
 
-Created by [@aferrari](https://x.com/aferrari) and [@christianmock](https://x.com/christianmock). Free to use and repurpose under the [MIT License](LICENSE).
+Created by [@aferrari](https://x.com/aferrari) and [@cristianmock](https://x.com/cristianmock). Free to use and repurpose under the [MIT License](LICENSE).
 
 **Example:** [results board](https://grokbot-awards-form.vercel.app/results) · [quiz](https://grokbot-awards-form.vercel.app)
 
@@ -60,7 +60,7 @@ Open `/results`. No login. The page shows each project's overall score, the thre
 
 ## Credits
 
-- **App:** [@aferrari](https://x.com/aferrari) and [@christianmock](https://x.com/christianmock), 2026.
+- **App:** [@aferrari](https://x.com/aferrari) and [@cristianmock](https://x.com/cristianmock), 2026.
 - **Score icons:** the black-and-white Grok bot stickers from [xAI](https://x.ai), in `public/bots`. Those drawings are xAI's. Replace them if you republish the app under another name.
 - **Built with:** Next.js, React, Neon Postgres, and Tailwind CSS.
 
@@ -68,7 +68,7 @@ Report a security problem to the repository owners. See [SECURITY.md](SECURITY.m
 
 ## License
 
-[MIT](LICENSE). Copyright (c) 2026 aferrari and christianmock.
+[MIT](LICENSE). Copyright (c) 2026 aferrari and cristianmock.
 
 You can use this app, change it, and ship your own version, including for a paid event. Keep the copyright notice and the license text with the code. The Grok bot stickers are not covered by this license.
 
