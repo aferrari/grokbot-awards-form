@@ -26,7 +26,7 @@ Anyone with the link can open this page. It shows the average of every submitted
 4. On the last project, the judge submits. That email cannot vote again.
 5. The results page sorts projects from the highest overall score to the lowest.
 
-A quiz can hold up to 40 projects. Up to 500 emails can be invited.
+A quiz can hold up to 40 projects. Up to 500 emails can be allowed.
 
 Updating the email list leaves existing votes in place. Replacing the project list deletes every saved vote, because each ballot has to match the current list of projects.
 
@@ -50,7 +50,7 @@ Research Desk | Pulls sources before a meeting
 ### Judge
 
 1. Open the quiz link.
-2. Enter the email you were invited with.
+2. Enter an email from the allowed list. The app does not send invitations. It only checks that the address is allowed and has not voted yet.
 3. Score Creativity, Usefulness, and Demo for each project. Press **Enter** to continue, or **Back** to change the previous project.
 4. Submit on the last project.
 
@@ -115,11 +115,11 @@ Admin calls send `Authorization: Bearer <ADMIN_SECRET>`.
 | Method | Path | Who | What it does |
 | --- | --- | --- | --- |
 | `GET` | `/api/quiz` | Anyone | Project list. No emails. |
-| `GET` | `/api/quiz` | Admin | Project list and invited emails. |
+| `GET` | `/api/quiz` | Admin | Project list and allowed emails. |
 | `POST` | `/api/quiz` | Admin | Replace the projects. Deletes saved votes. |
 | `POST` | `/api/voters` | Admin | Replace the email list. Votes stay. |
 | `POST` | `/api/eligibility` | Anyone | Check whether an email can vote. |
-| `POST` | `/api/submissions` | Invited judge | Save one ballot. |
+| `POST` | `/api/submissions` | Allowed judge | Save one ballot. |
 | `GET` | `/api/results` | Anyone | Averages and rankings. No per-judge scores. |
 
 Replace the quiz:

@@ -222,7 +222,7 @@ export function QuizFlow() {
         </p>
         <ol className="mt-6 max-w-xl list-decimal space-y-2 pl-5 text-[#191919]">
           <li>Open Setup and enter the admin secret.</li>
-          <li>Paste invited emails, one address per line.</li>
+          <li>Paste the allowed emails, one address per line.</li>
           <li>Paste projects, one per line, then create the quiz.</li>
         </ol>
         <Link
@@ -232,7 +232,7 @@ export function QuizFlow() {
           Open setup
         </Link>
         <p className="mt-6 max-w-xl text-[#737373]">
-          Voters return here and enter an invited email. Rankings are on the results board.
+          Voters return here and enter an allowed email. Rankings are on the results board.
         </p>
       </div>
     );
@@ -256,7 +256,7 @@ export function QuizFlow() {
             Thanks — your vote is in!
           </h1>
           <p className="mt-6 max-w-xl text-lg text-[#737373]">
-            Your scores for all {list.length} projects were saved. Each invited email can vote once.
+            Your scores for all {list.length} projects were saved. Each allowed email can vote once.
           </p>
           <Link
             href="/results"
@@ -294,7 +294,7 @@ export function QuizFlow() {
               What&apos;s your email?
             </h1>
             <p className="mt-4 max-w-xl text-lg text-[#737373]">
-              Use the address you were invited with. Each email can submit one evaluation.
+              Use an email on the allowed list. Each address can submit one evaluation.
             </p>
             <input
               type="email"

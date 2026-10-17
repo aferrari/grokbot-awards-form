@@ -55,7 +55,7 @@ export function QuizSetup() {
     })();
   }, []);
 
-  async function loadInvitedVoters(secret: string) {
+  async function loadAllowedEmails(secret: string) {
     if (!secret) return;
     try {
       const res = await fetch("/api/quiz", {
@@ -191,7 +191,7 @@ export function QuizSetup() {
         <h1 className="mt-2 text-3xl font-light sm:text-5xl">Create the quiz</h1>
         <ol className="mt-6 max-w-2xl list-decimal space-y-2 pl-5 text-lg text-[#191919]">
           <li>Enter the admin secret. It is the <span className="font-mono text-base">ADMIN_SECRET</span> from the server, not a voter email. Leave the field to load the current list.</li>
-          <li>Paste invited emails, one address per line. You can save that list on its own.</li>
+          <li>Paste the allowed emails, one address per line. You can save that list on its own.</li>
           <li>Paste projects, one per line. Add an optional description after a pipe.</li>
           <li>Create the quiz, then share the quiz link. Rankings stay on the results board.</li>
         </ol>
@@ -212,14 +212,14 @@ export function QuizSetup() {
               onChange={(e) => setAdminSecret(e.target.value)}
               onBlur={(e) => {
                 const secret = e.target.value;
-                if (secret) void loadInvitedVoters(secret);
+                if (secret) void loadAllowedEmails(secret);
               }}
               className="mt-2 w-full rounded-lg border border-[#e0e0e0] bg-white px-4 py-3 text-sm text-[#191919] outline-none placeholder:text-[#b3b3b3] focus:border-[#191919]"
             />
           </label>
 
           <label className="block">
-            <span className="text-sm font-medium text-[#191919]">Invited voters</span>
+            <span className="text-sm font-medium text-[#191919]">Allowed emails</span>
             <span className="mt-1 block text-sm text-[#737373]">One email address per line.</span>
             <textarea
               value={emailsText}
@@ -245,7 +245,7 @@ export function QuizSetup() {
               <p className="text-sm text-[#737373]">
                 {savedEmailCount === 0
                   ? "Voter list cleared — nobody can vote until you add emails."
-                  : `${savedEmailCount} invited voter${savedEmailCount === 1 ? "" : "s"} saved.`}
+                  : `${savedEmailCount} allowed email${savedEmailCount === 1 ? "" : "s"} saved.`}
               </p>
             )}
           </div>
@@ -273,7 +273,7 @@ export function QuizSetup() {
           {confirming ? (
             <div className="rounded-xl border border-[#e0e0e0] bg-white p-5">
               <p className="text-lg">
-                {`Replace the quiz with ${lineCount} ${lineCount === 1 ? "project" : "projects"}, save ${emailLineCount} invited voter${emailLineCount === 1 ? "" : "s"}, and delete every saved vote?`}
+                {`Replace the quiz with ${lineCount} ${lineCount === 1 ? "project" : "projects"}, save ${emailLineCount} allowed email${emailLineCount === 1 ? "" : "s"}, and delete every saved vote?`}
               </p>
               <div className="mt-4 flex flex-wrap gap-3">
                 <button
@@ -317,8 +317,8 @@ export function QuizSetup() {
                 <>
                   {" "}
                   {savedEmailCount === 0
-                    ? "No invited voters yet."
-                    : `${savedEmailCount} invited voter${savedEmailCount === 1 ? "" : "s"} on the list.`}
+                    ? "No allowed emails yet."
+                    : `${savedEmailCount} allowed email${savedEmailCount === 1 ? "" : "s"} on the list.`}
                 </>
               )}
             </p>
@@ -346,7 +346,7 @@ export function QuizSetup() {
             {currentEmails && (
               <div>
                 <h2 className="text-sm font-medium uppercase tracking-wide text-[#737373]">
-                  Invited voters
+                  Allowed emails
                 </h2>
                 <p className="mt-2 text-[#737373]">
                   {currentEmails.length === 0

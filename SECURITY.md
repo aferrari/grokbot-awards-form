@@ -27,12 +27,12 @@ These do not require the admin secret:
 
 These require `Authorization: Bearer <ADMIN_SECRET>`:
 
-- `GET /api/quiz` when the invited voter list is included
+- `GET /api/quiz` when the allowed email list is included
 - `POST /api/quiz` — replaces the quiz and deletes saved votes
-- `POST /api/voters` — replaces the invited voter list
+- `POST /api/voters` — replaces the allowed email list
 
 `/setup` collects the secret in page memory and sends it as that header. The secret is not written into the repository.
 
 ## Data
 
-Invited emails, voter emails, and scores are stored in Neon Postgres. They are not committed to git. The invited list is returned only to requests that present the admin secret.
+Allowed emails, voter emails, and scores are stored in Neon Postgres. They are not committed to git. The allowed list is returned only to requests that present the admin secret.
