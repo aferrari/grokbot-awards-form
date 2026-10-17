@@ -47,11 +47,13 @@ export function ResultsDashboard() {
               Awards results
             </h1>
             <p className="mt-2 text-[#a3a3a3]">
-              {!data && !error
-                ? "Loading results…"
-                : submissionCount === 0
-                  ? "No evaluations yet — share the quiz link to get started."
-                  : `${submissionCount} judge${submissionCount === 1 ? "" : "s"} submitted`}
+              {error
+                ? error
+                : !data
+                  ? "Loading results…"
+                  : submissionCount === 0
+                    ? "No evaluations yet. Share the quiz link so invited voters can score the projects."
+                    : `${submissionCount} judge${submissionCount === 1 ? "" : "s"} submitted`}
             </p>
           </div>
           <Link
@@ -64,12 +66,6 @@ export function ResultsDashboard() {
       </header>
 
       <main className="mx-auto max-w-6xl px-6 py-10 sm:px-10">
-        {error && (
-          <p className="mb-8 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-            {error}
-          </p>
-        )}
-
         <section aria-labelledby="rankings-heading">
           <h2 id="rankings-heading" className="text-lg font-semibold">
             Rankings

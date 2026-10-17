@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { CRITERIA, type ProjectScores } from "@/lib/criteria";
+import { databaseErrorResponse } from "@/lib/http-error";
 import { ensureSchema, getSql } from "@/lib/db";
 import { listProjects } from "@/lib/quiz-store";
 import { assertVoterCanSubmit } from "@/lib/voter-eligibility";
@@ -115,8 +116,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, id: submissionId });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Server error";
-    const status = message.includes("DATABASE_URL") ? 503 : 500;
-    return NextResponse.json({ error: message }, { status });
+    return databaseErrorResponse(e, "Could not save this vote");
   }
 }
